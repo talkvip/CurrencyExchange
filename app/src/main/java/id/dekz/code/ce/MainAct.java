@@ -4,6 +4,18 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.Toast;
+
+import com.yalantis.guillotine.animation.GuillotineAnimation;
+
+import id.dekz.code.ce.app.CurrencyExchange;
 
 /**
  * Created by DEKZ on 1/27/2016.
@@ -11,6 +23,8 @@ import android.support.v7.widget.Toolbar;
 public class MainAct extends AppCompatActivity{
 
     private Toolbar toolbar;
+    private FrameLayout root;
+    private View contentHamburger;
 
     @Override
     protected void onCreate(Bundle savedInstanceState){
@@ -18,8 +32,36 @@ public class MainAct extends AppCompatActivity{
         setContentView(R.layout.activity_main);
 
         toolbar = (Toolbar) findViewById(R.id.toolbar);
-        //toolbar.setLogo(R.mipmap.ic_launcher2);
-        toolbar.setTitleTextColor(Color.WHITE);
+        //toolbar.setTitleTextColor(Color.WHITE);
         setSupportActionBar(toolbar);
+        getSupportActionBar().setTitle(null);
+
+        contentHamburger = (View) findViewById(R.id.content_hamburger);
+        root = (FrameLayout) findViewById(R.id.root);
+        View guillotineMenu = LayoutInflater.from(this).inflate(R.layout.menu_main,null);
+        root.addView(guillotineMenu);
+
+        new GuillotineAnimation.GuillotineBuilder(guillotineMenu, guillotineMenu.findViewById(R.id.guillotine_hamburger), contentHamburger)
+                .setStartDelay(250)
+                .setActionBarViewForAnimation(toolbar)
+                .setClosedOnStart(true)
+                .build();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.action_refresh) {
+            Toast.makeText(getApplicationContext(),"refresh",Toast.LENGTH_SHORT).show();
+            CurrencyExchange.getInstance().trackEvent("click event","refresh data","refresh");
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 }

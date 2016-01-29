@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/colorPrimary">
+
+    <android.support.v7.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_height="wrap_content"
+        android:layout_width="?attr/actionBarSize"
+        android:background="@color/colorPrimary"
+        app:contentInsetStart="0dp">
+
+        <ImageView
+            android:id="@+id/guillotine_hamburger"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/abc_action_bar_overflow_padding_start_material"
+            android:src="@drawable/ic_menu"
+            android:paddingLeft="18dp"
+            android:paddingTop="24dp" />
+
+    </android.support.v7.widget.Toolbar>
+
+</LinearLayout>
