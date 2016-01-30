@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="currencyTextSize">25dp</dimen>
+    <dimen name="currencyResultTextSize">45dp</dimen>
+    <dimen name="currencyResultDetailTextSize">15dp</dimen>
+    <dimen name="currencyBoxHeight">50dp</dimen>
+</resources>

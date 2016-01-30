@@ -11,8 +11,10 @@ import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import com.balysv.materialripple.MaterialRippleLayout;
 import com.yalantis.guillotine.animation.GuillotineAnimation;
 
 import id.dekz.code.ce.app.CurrencyExchange;
@@ -25,6 +27,9 @@ public class MainAct extends AppCompatActivity{
     private Toolbar toolbar;
     private FrameLayout root;
     private View contentHamburger;
+    private TextView tvCLeft,tvCRight;
+    private View viewConvert;
+    private MaterialRippleLayout materialRippleLayout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState){
@@ -46,6 +51,16 @@ public class MainAct extends AppCompatActivity{
                 .setActionBarViewForAnimation(toolbar)
                 .setClosedOnStart(true)
                 .build();
+
+        tvCLeft = (TextView) findViewById(R.id.tvCurrencyLeft);
+        tvCLeft.setTypeface(CurrencyExchange.robotoCondensedLight);
+        tvCRight = (TextView) findViewById(R.id.tvCurrencyRight);
+        tvCRight.setTypeface(CurrencyExchange.robotoCondensedLight);
+
+        //viewConvert = (View) findViewById(R.id.viewConvert);
+        //materialRippleLayout = (MaterialRippleLayout) findViewById(R.id.ripple);
+        //materialRippleLayout.on(viewConvert).rippleColor(Color.GRAY).create();
+
     }
 
     @Override

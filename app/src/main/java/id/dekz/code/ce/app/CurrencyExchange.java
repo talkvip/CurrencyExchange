@@ -1,6 +1,7 @@
 package id.dekz.code.ce.app;
 
 import android.app.Application;
+import android.graphics.Typeface;
 
 import com.google.android.gms.analytics.GoogleAnalytics;
 import com.google.android.gms.analytics.HitBuilders;
@@ -16,13 +17,21 @@ public class CurrencyExchange extends Application {
 
     private static CurrencyExchange mInstance;
 
+    //fonts
+    public static Typeface robotoCondensedLight;
+
     @Override
     public void onCreate() {
         super.onCreate();
         mInstance = this;
-
+        initTypeface();
         AnalyticsTrackers.initialize(this);
         AnalyticsTrackers.getInstance().get(AnalyticsTrackers.Target.APP);
+    }
+
+    private void initTypeface() {
+        robotoCondensedLight = Typeface.createFromAsset(getAssets(), "fonts/RobotoCondensed-Light.ttf");
+
     }
 
     public static synchronized CurrencyExchange getInstance() {
