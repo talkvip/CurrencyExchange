@@ -117,8 +117,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textAppearance="?android:attr/textAppearanceMedium"
-            android:text="Rp 234560"
-            android:id="@+id/textView8"
+            android:id="@+id/tvResultConvert"
             android:textColor="#fff"
             android:textSize="25dp"
             android:layout_centerVertical="true"
@@ -161,7 +160,7 @@
                 android:layout_height="wrap_content"
                 android:textAppearance="?android:attr/textAppearanceMedium"
                 android:text="1:17 PM"
-                android:id="@+id/textView5"
+                android:id="@+id/tvCRTime"
                 android:textSize="13dp" />
 
             <TextView
@@ -179,7 +178,7 @@
                 android:layout_height="wrap_content"
                 android:textAppearance="?android:attr/textAppearanceMedium"
                 android:text="Feb, 06 2016"
-                android:id="@+id/textView7"
+                android:id="@+id/tvCRDate"
                 android:textSize="13dp" />
 
         </LinearLayout>
@@ -195,8 +194,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textAppearance="?android:attr/textAppearanceLarge"
-                android:text="25177.12"
-                android:id="@+id/textView2"
+                android:text="000"
+                android:id="@+id/tvCurrentRate"
                 android:textSize="45dp"
                 android:textStyle="bold" />
 
