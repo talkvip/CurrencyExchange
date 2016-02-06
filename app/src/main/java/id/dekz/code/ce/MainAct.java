@@ -2,6 +2,8 @@ package id.dekz.code.ce;
 
 import android.graphics.Color;
 import android.os.Bundle;
+import android.support.design.widget.TabLayout;
+import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.LayoutInflater;
@@ -17,7 +19,10 @@ import android.widget.Toast;
 import com.balysv.materialripple.MaterialRippleLayout;
 import com.yalantis.guillotine.animation.GuillotineAnimation;
 
+import id.dekz.code.ce.adapter.ViewPagerAdapter;
 import id.dekz.code.ce.app.CurrencyExchange;
+import id.dekz.code.ce.fragment.FragmentConvert;
+import id.dekz.code.ce.fragment.FragmentList;
 
 /**
  * Created by DEKZ on 1/27/2016.
@@ -27,9 +32,8 @@ public class MainAct extends AppCompatActivity{
     private Toolbar toolbar;
     private FrameLayout root;
     private View contentHamburger;
-    private TextView tvCLeft,tvCRight;
-    private View viewConvert;
-    private MaterialRippleLayout materialRippleLayout;
+    private TabLayout tabLayout;
+    private ViewPager viewPager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState){
@@ -52,15 +56,18 @@ public class MainAct extends AppCompatActivity{
                 .setClosedOnStart(true)
                 .build();
 
-        tvCLeft = (TextView) findViewById(R.id.tvCurrencyLeft);
-        tvCLeft.setTypeface(CurrencyExchange.robotoCondensedLight);
-        tvCRight = (TextView) findViewById(R.id.tvCurrencyRight);
-        tvCRight.setTypeface(CurrencyExchange.robotoCondensedLight);
+        viewPager = (ViewPager) findViewById(R.id.viewpager);
+        setupViewPager(viewPager);
 
-        //viewConvert = (View) findViewById(R.id.viewConvert);
-        //materialRippleLayout = (MaterialRippleLayout) findViewById(R.id.ripple);
-        //materialRippleLayout.on(viewConvert).rippleColor(Color.GRAY).create();
+        tabLayout = (TabLayout) findViewById(R.id.tabs);
+        tabLayout.setupWithViewPager(viewPager);
+    }
 
+    private void setupViewPager(ViewPager viewPager) {
+        ViewPagerAdapter adapter = new ViewPagerAdapter(getSupportFragmentManager());
+        adapter.addFragment(new FragmentConvert(), "CONVERT");
+        adapter.addFragment(new FragmentList(), "LIST");
+        viewPager.setAdapter(adapter);
     }
 
     @Override

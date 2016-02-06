@@ -2,5 +2,7 @@
 <resources>
     <color name="colorPrimary">#FFC107</color>
     <color name="colorPrimaryDark">#FFA000</color>
-    <color name="colorAccent">@android:color/transparent</color>
+    <!--<color name="colorAccent">@android:color/transparent</color>-->
+    <color name="colorAccent">#FFE082</color>
+    <color name="backgroundConvert">#2e2e2e</color>
 </resources>
