@@ -23,6 +23,7 @@ import id.dekz.code.ce.adapter.ViewPagerAdapter;
 import id.dekz.code.ce.app.CurrencyExchange;
 import id.dekz.code.ce.fragment.FragmentConvert;
 import id.dekz.code.ce.fragment.FragmentList;
+import id.dekz.code.ce.util.ConnectionChecker;
 
 /**
  * Created by DEKZ on 1/27/2016.
@@ -34,6 +35,8 @@ public class MainAct extends AppCompatActivity{
     private View contentHamburger;
     private TabLayout tabLayout;
     private ViewPager viewPager;
+
+    private ConnectionChecker connectionChecker;
 
     @Override
     protected void onCreate(Bundle savedInstanceState){
@@ -62,6 +65,16 @@ public class MainAct extends AppCompatActivity{
         tabLayout = (TabLayout) findViewById(R.id.tabs);
         tabLayout.setupWithViewPager(viewPager);
     }
+
+    @Override
+    protected void onResume(){
+        super.onResume();
+        connectionChecker = new ConnectionChecker(getApplicationContext());
+        if(!connectionChecker.isOnline()){
+            //Toast.makeText(getApplicationContext(),"connected",Toast.LENGTH_SHORT).show();
+        }
+    }
+
 
     private void setupViewPager(ViewPager viewPager) {
         ViewPagerAdapter adapter = new ViewPagerAdapter(getSupportFragmentManager());

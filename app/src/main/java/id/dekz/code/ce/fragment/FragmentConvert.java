@@ -22,7 +22,6 @@ import com.txusballesteros.AutoscaleEditText;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.w3c.dom.Text;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -32,7 +31,10 @@ import java.util.Locale;
 
 import id.dekz.code.ce.R;
 import id.dekz.code.ce.pojo.MySingleton;
-import id.dekz.code.ce.task.ConvertTask;
+import id.dekz.code.ce.pojo.Rate;
+import id.dekz.code.ce.util.ConnectionChecker;
+import id.dekz.code.ce.util.Database;
+import id.dekz.code.ce.util.StringToDate;
 
 /**
  * Created by DEKZ on 2/6/2016.
@@ -47,6 +49,10 @@ public class FragmentConvert extends Fragment {
     private TextView tvCurrentRate;
     private TextView tvCRDate;
     private SimpleDateFormat simpleDateFormat;
+    private String dateNow;
+
+    private Database db;
+    private ConnectionChecker connectionChecker;
 
     private long rate;
 
@@ -96,8 +102,10 @@ public class FragmentConvert extends Fragment {
         });
 
         Calendar c = Calendar.getInstance();
-        String pattern = "MM, DD yyyy";
+        String pattern = "yyyy-MM-dd";
         simpleDateFormat = new SimpleDateFormat(pattern, new Locale("en", "US"));
+        dateNow = simpleDateFormat.format(c.getTime());
+        db = new Database(getActivity());
 
         return rootView;
     }
@@ -105,29 +113,60 @@ public class FragmentConvert extends Fragment {
     @Override
     public void onResume(){
         super.onResume();
-        refreshCurrentRate(cFrom.getText().toString(),cTo.getText().toString());
+        connectionChecker = new ConnectionChecker(getActivity());
+        if(!connectionChecker.isOnline()){
+            Toast.makeText(getActivity(),"not connected",Toast.LENGTH_SHORT).show();
+        }else{
+            refreshCurrentRate(cFrom.getText().toString(), cTo.getText().toString());
+        }
+
     }
 
-    private void refreshCurrentRate(String base, final String symbols){
+
+
+    private void refreshCurrentRate(final String base, final String symbols){
         String  URLsingleRate = "http://api.fixer.io/latest?base="+base+"&symbols="+symbols;
-        JsonObjectRequest jsonObjReq = new JsonObjectRequest(Request.Method.GET,
+        JsonObjectRequest refreshReq = new JsonObjectRequest(Request.Method.GET,
                 URLsingleRate, null, new Response.Listener<JSONObject>() {
 
             @Override
             public void onResponse(JSONObject response) {
-                //Log.d(TAG, response.toString());
                 Date date = null;
                 try {
                     String datestr = response.getString("date");
-
-                    //date = simpleDateFormat.parse(datestr);
-                    //Toast.makeText(getActivity(),""+date,Toast.LENGTH_SHORT).show();
-                    tvCRDate.setText(datestr);
-
                     JSONObject rates = response.getJSONObject("rates");
                     String cRate = rates.getString(symbols);
 
-                    tvCurrentRate.setText(cRate);
+                    Rate currentRate = new Rate(base,symbols);
+                    if(db.checkData(currentRate)>0){
+                        //rate already in db
+                        //get updated on to compare
+                        Rate lastDateRate = new Rate(base,symbols);
+                        String lastUpdatedDateRate = db.getDataDate(lastDateRate);
+
+                        //if same/ok, use existing
+                        StringToDate compareDate = new StringToDate(getActivity(),lastUpdatedDateRate,dateNow);
+                        String dateCompared = compareDate.difference(lastUpdatedDateRate,dateNow);
+                        if(dateCompared.equals("ok")){
+                            //use existing rate
+                            Rate existingRate = db.getSingleRate(lastDateRate);
+                            tvCurrentRate.setText(String.valueOf(existingRate.getAmount()));
+                            tvCRDate.setText(existingRate.getDate());
+                        }else if(dateCompared.equals("outdated")){
+                            //try req new rate
+                            Toast.makeText(getActivity(),"rate outdated! need update rate",Toast.LENGTH_SHORT).show();
+                        }else{
+                            //something wrong
+                            Toast.makeText(getActivity(),"something wrong",Toast.LENGTH_SHORT).show();
+                        }
+                        //else, check connection to request new data
+                    }else{
+                        //insert new rate
+                        Rate newRate = new Rate(base,symbols,datestr,Integer.parseInt(cRate),dateNow);
+                        db.saveData(newRate);
+                        tvCurrentRate.setText(cRate);
+                        tvCRDate.setText(datestr);
+                    }
 
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -139,22 +178,20 @@ public class FragmentConvert extends Fragment {
             @Override
             public void onErrorResponse(VolleyError error) {
                 Toast.makeText(getActivity(),
-                        "error response", Toast.LENGTH_SHORT).show();
+                        "Request Time Out", Toast.LENGTH_SHORT).show();
             }
         });
 
-        MySingleton.getInstance(getActivity()).addToRequestQueue(jsonObjReq);
+        MySingleton.getInstance(getActivity()).addToRequestQueue(refreshReq);
     }
 
     private void getSingleRate(String base, final String symbols, final long amountBase) {
         String  URLsingleRate = "http://api.fixer.io/latest?base="+base+"&symbols="+symbols;
-        JsonObjectRequest jsonObjReq = new JsonObjectRequest(Request.Method.GET,
+        JsonObjectRequest singleRateReq = new JsonObjectRequest(Request.Method.GET,
                 URLsingleRate, null, new Response.Listener<JSONObject>() {
 
             @Override
             public void onResponse(JSONObject response) {
-                //Log.d(TAG, response.toString());
-
                 try {
                     JSONObject rates = response.getJSONObject("rates");
                     //rate = Long.parseLong(rates.getString(symbols));
@@ -171,12 +208,10 @@ public class FragmentConvert extends Fragment {
 
             @Override
             public void onErrorResponse(VolleyError error) {
-                //VolleyLog.d(TAG, "Error: " + error.getMessage());
-                Toast.makeText(getActivity(),
-                        error.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(getActivity(),"Request Time Out", Toast.LENGTH_SHORT).show();
             }
         });
 
-        MySingleton.getInstance(getActivity()).addToRequestQueue(jsonObjReq);
+        MySingleton.getInstance(getActivity()).addToRequestQueue(singleRateReq);
     }
 }
