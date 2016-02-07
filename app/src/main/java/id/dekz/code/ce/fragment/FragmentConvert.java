@@ -135,7 +135,7 @@ public class FragmentConvert extends Fragment {
                 try {
                     String datestr = response.getString("date");
                     JSONObject rates = response.getJSONObject("rates");
-                    String cRate = rates.getString(symbols);
+                    int cRate = rates.getInt(symbols);
 
                     Rate currentRate = new Rate(base,symbols);
                     if(db.checkData(currentRate)>0){
@@ -162,9 +162,9 @@ public class FragmentConvert extends Fragment {
                         //else, check connection to request new data
                     }else{
                         //insert new rate
-                        Rate newRate = new Rate(base,symbols,datestr,Integer.parseInt(cRate),dateNow);
+                        Rate newRate = new Rate(base,symbols,datestr,cRate,dateNow);
                         db.saveData(newRate);
-                        tvCurrentRate.setText(cRate);
+                        tvCurrentRate.setText(String.valueOf(cRate));
                         tvCRDate.setText(datestr);
                     }
 
