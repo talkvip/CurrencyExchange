@@ -60,6 +60,7 @@ public class FragmentConvert extends Fragment {
     private Rate currentRate;
     private PreferencesManager preferencesManager;
     private DialogManager dialogManager;
+    private boolean useOfflineRate = false;
 
     public FragmentConvert() {
         // Required empty public constructor
@@ -97,10 +98,18 @@ public class FragmentConvert extends Fragment {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
                 if ((event != null && (event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) || (actionId == EditorInfo.IME_ACTION_DONE)) {
-                    String base = cFrom.getText().toString();
-                    String symbol = cTo.getText().toString();
-                    long amountBase = Long.parseLong(etAmount.getText().toString());
-                    getSingleRate(base,symbol,amountBase);
+                    //Toast.makeText(getActivity(),""+useOfflineRate,Toast.LENGTH_SHORT).show();
+                    if(useOfflineRate){
+                        long amountDB = Long.parseLong(String.valueOf(db.getSingleRate(currentRate).getAmount()));
+                        long amountBase = Long.parseLong(etAmount.getText().toString());
+                        long result = amountDB * amountBase;
+                        tvResultConvert.setText(String.valueOf(result));
+                    }else{
+                        String base = cFrom.getText().toString();
+                        String symbol = cTo.getText().toString();
+                        long amountBase = Long.parseLong(etAmount.getText().toString());
+                        getSingleRate(base,symbol,amountBase);
+                    }
                 }
                 return false;
             }
@@ -144,6 +153,7 @@ public class FragmentConvert extends Fragment {
             Rate rateOffline = db.getSingleRate(currentRate);
             tvCRDate.setText(rateOffline.getDate());
             tvCurrentRate.setText(String.valueOf(rateOffline.getAmount()));
+            useOfflineRate = true;
         }else{
             //rate not available
             //Toast.makeText(getActivity(),"need connection to update rate data!",Toast.LENGTH_SHORT).show();
