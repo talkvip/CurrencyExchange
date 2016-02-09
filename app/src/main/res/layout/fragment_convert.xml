@@ -177,7 +177,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textAppearance="?android:attr/textAppearanceMedium"
-                android:text="Feb, 06 2016"
+                android:text="Feb, 06 2016 [sample]"
                 android:id="@+id/tvCRDate"
                 android:textSize="13dp" />
 

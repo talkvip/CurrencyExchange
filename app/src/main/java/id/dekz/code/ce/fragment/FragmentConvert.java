@@ -34,6 +34,8 @@ import id.dekz.code.ce.pojo.MySingleton;
 import id.dekz.code.ce.pojo.Rate;
 import id.dekz.code.ce.util.ConnectionChecker;
 import id.dekz.code.ce.util.Database;
+import id.dekz.code.ce.util.DialogManager;
+import id.dekz.code.ce.util.PreferencesManager;
 import id.dekz.code.ce.util.StringToDate;
 
 /**
@@ -55,6 +57,9 @@ public class FragmentConvert extends Fragment {
     private ConnectionChecker connectionChecker;
 
     private long rate;
+    private Rate currentRate;
+    private PreferencesManager preferencesManager;
+    private DialogManager dialogManager;
 
     public FragmentConvert() {
         // Required empty public constructor
@@ -113,16 +118,65 @@ public class FragmentConvert extends Fragment {
     @Override
     public void onResume(){
         super.onResume();
+        dialogManager = new DialogManager(getActivity());
+        preferencesManager = new PreferencesManager(getActivity());
+        currentRate = new Rate(cFrom.getText().toString(),cTo.getText().toString());
         connectionChecker = new ConnectionChecker(getActivity());
-        if(!connectionChecker.isOnline()){
-            Toast.makeText(getActivity(),"not connected",Toast.LENGTH_SHORT).show();
-        }else{
-            refreshCurrentRate(cFrom.getText().toString(), cTo.getText().toString());
-        }
 
+        if(!connectionChecker.isOnline()){
+            //Toast.makeText(getActivity(),"not connected",Toast.LENGTH_SHORT).show();
+            useRateInDB();
+        }else{
+            if(!isCurrentRateAvailableInDB()){
+                //try req data to be inserted to db
+                refreshCurrentRate(cFrom.getText().toString(),cTo.getText().toString());
+            }else{
+                //check if data uptodate
+                isCurrentRateUpToDate();
+            }
+        }
     }
 
+    private void useRateInDB(){
+        //check if rate is available in db
+        if(db.checkData(currentRate)>0){
+            //rate available
+            Rate rateOffline = db.getSingleRate(currentRate);
+            tvCRDate.setText(rateOffline.getDate());
+            tvCurrentRate.setText(String.valueOf(rateOffline.getAmount()));
+        }else{
+            //rate not available
+            //Toast.makeText(getActivity(),"need connection to update rate data!",Toast.LENGTH_SHORT).show();
+            dialogManager.showSettingsInternet();
+        }
+    }
 
+    private boolean isCurrentRateAvailableInDB(){
+        if(db.checkData(currentRate)>0){
+            return true;
+        }else{
+            return false;
+        }
+    }
+
+    private void isCurrentRateUpToDate(){
+        String lastUpdatedDateRate = db.getDataDate(currentRate);
+        StringToDate compareDate = new StringToDate(getActivity(),lastUpdatedDateRate,dateNow);
+        String dateCompared = compareDate.difference(lastUpdatedDateRate, dateNow);
+        if(dateCompared.equals("ok")){
+            //data uptodate
+            Rate ratedb = db.getSingleRate(currentRate);
+            tvCurrentRate.setText(String.valueOf(ratedb.getAmount()));
+            tvCRDate.setText(ratedb.getDate());
+        }else if(dateCompared.equals("outdated")){
+            //try req new rate
+            //Toast.makeText(getActivity(),"rate outdated! need update rate",Toast.LENGTH_SHORT).show();
+            refreshCurrentRate(cFrom.getText().toString(),cTo.getText().toString());
+        }else{
+            //something wrong
+            Toast.makeText(getActivity(),"something wrong",Toast.LENGTH_SHORT).show();
+        }
+    }
 
     private void refreshCurrentRate(final String base, final String symbols){
         String  URLsingleRate = "http://api.fixer.io/latest?base="+base+"&symbols="+symbols;
@@ -131,42 +185,25 @@ public class FragmentConvert extends Fragment {
 
             @Override
             public void onResponse(JSONObject response) {
-                Date date = null;
                 try {
                     String datestr = response.getString("date");
                     JSONObject rates = response.getJSONObject("rates");
                     int cRate = rates.getInt(symbols);
 
-                    Rate currentRate = new Rate(base,symbols);
-                    if(db.checkData(currentRate)>0){
-                        //rate already in db
-                        //get updated on to compare
-                        Rate lastDateRate = new Rate(base,symbols);
-                        String lastUpdatedDateRate = db.getDataDate(lastDateRate);
-
-                        //if same/ok, use existing
-                        StringToDate compareDate = new StringToDate(getActivity(),lastUpdatedDateRate,dateNow);
-                        String dateCompared = compareDate.difference(lastUpdatedDateRate,dateNow);
-                        if(dateCompared.equals("ok")){
-                            //use existing rate
-                            Rate existingRate = db.getSingleRate(lastDateRate);
-                            tvCurrentRate.setText(String.valueOf(existingRate.getAmount()));
-                            tvCRDate.setText(existingRate.getDate());
-                        }else if(dateCompared.equals("outdated")){
-                            //try req new rate
-                            Toast.makeText(getActivity(),"rate outdated! need update rate",Toast.LENGTH_SHORT).show();
+                    if(datestr!=null && cRate!=0){
+                        //insert data to db
+                        Rate newRate = new Rate(base,symbols,datestr,cRate,dateNow);
+                        long statusSaveData = db.saveData(newRate);
+                        if(statusSaveData>0){
+                            //succes save data
+                            tvCurrentRate.setText(String.valueOf(cRate));
+                            tvCRDate.setText(datestr);
                         }else{
                             //something wrong
                             Toast.makeText(getActivity(),"something wrong",Toast.LENGTH_SHORT).show();
                         }
-                        //else, check connection to request new data
-                    }else{
-                        //insert new rate
-                        Rate newRate = new Rate(base,symbols,datestr,cRate,dateNow);
-                        db.saveData(newRate);
-                        tvCurrentRate.setText(String.valueOf(cRate));
-                        tvCRDate.setText(datestr);
                     }
+
 
                 } catch (JSONException e) {
                     e.printStackTrace();
