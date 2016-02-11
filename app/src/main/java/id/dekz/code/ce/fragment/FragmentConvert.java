@@ -2,15 +2,12 @@ package id.dekz.code.ce.fragment;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,7 +20,8 @@ import com.txusballesteros.AutoscaleEditText;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.text.ParseException;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -37,6 +35,7 @@ import id.dekz.code.ce.util.Database;
 import id.dekz.code.ce.util.DialogManager;
 import id.dekz.code.ce.util.PreferencesManager;
 import id.dekz.code.ce.util.StringToDate;
+import id.dekz.code.ce.util.SubStringCurrency;
 
 /**
  * Created by DEKZ on 2/6/2016.
@@ -50,17 +49,20 @@ public class FragmentConvert extends Fragment {
     private TextView tvResultConvert;
     private TextView tvCurrentRate;
     private TextView tvCRDate;
-    private SimpleDateFormat simpleDateFormat;
-    private String dateNow;
+    private SimpleDateFormat dateFormat,timeFormat;
+    private String dateNow,timeNow,lastUpdatedDateRate;
+    private Date currentDate;
 
     private Database db;
     private ConnectionChecker connectionChecker;
 
-    private long rate;
+    private Double rate;
     private Rate currentRate;
     private PreferencesManager preferencesManager;
     private DialogManager dialogManager;
     private boolean useOfflineRate = false;
+    private NumberFormat decimalFormat = new DecimalFormat("#0.00");
+    StringToDate compareDate;
 
     public FragmentConvert() {
         // Required empty public constructor
@@ -100,14 +102,17 @@ public class FragmentConvert extends Fragment {
                 if ((event != null && (event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) || (actionId == EditorInfo.IME_ACTION_DONE)) {
                     //Toast.makeText(getActivity(),""+useOfflineRate,Toast.LENGTH_SHORT).show();
                     if(useOfflineRate){
-                        long amountDB = Long.parseLong(String.valueOf(db.getSingleRate(currentRate).getAmount()));
-                        long amountBase = Long.parseLong(etAmount.getText().toString());
-                        long result = amountDB * amountBase;
-                        tvResultConvert.setText(String.valueOf(result));
+                        Double amountDB = Double.parseDouble(String.valueOf(db.getSingleRate(currentRate).getAmount()));
+                        Double amountBase = Double.parseDouble(etAmount.getText().toString());
+                        Double result = amountDB * amountBase;
+                        tvResultConvert.setText(decimalFormat.format(result).toString());
+
+                        SubStringCurrency tes = new SubStringCurrency(String.valueOf(result));
+                        Toast.makeText(getActivity(),""+tes.getFormattedAmount(tvResultConvert.getText().toString()),Toast.LENGTH_LONG).show();
                     }else{
                         String base = cFrom.getText().toString();
                         String symbol = cTo.getText().toString();
-                        long amountBase = Long.parseLong(etAmount.getText().toString());
+                        Double amountBase = Double.parseDouble(etAmount.getText().toString());
                         getSingleRate(base,symbol,amountBase);
                     }
                 }
@@ -117,9 +122,8 @@ public class FragmentConvert extends Fragment {
 
         Calendar c = Calendar.getInstance();
         String pattern = "yyyy-MM-dd";
-        simpleDateFormat = new SimpleDateFormat(pattern, new Locale("en", "US"));
-        dateNow = simpleDateFormat.format(c.getTime());
-        db = new Database(getActivity());
+        dateFormat = new SimpleDateFormat(pattern, new Locale("en", "US"));
+        dateNow = dateFormat.format(c.getTime());
 
         return rootView;
     }
@@ -127,10 +131,13 @@ public class FragmentConvert extends Fragment {
     @Override
     public void onResume(){
         super.onResume();
+        db = new Database(getActivity());
         dialogManager = new DialogManager(getActivity());
         preferencesManager = new PreferencesManager(getActivity());
         currentRate = new Rate(cFrom.getText().toString(),cTo.getText().toString());
         connectionChecker = new ConnectionChecker(getActivity());
+
+        compareDate = new StringToDate(getActivity(),lastUpdatedDateRate,dateNow);
 
         if(!connectionChecker.isOnline()){
             //Toast.makeText(getActivity(),"not connected",Toast.LENGTH_SHORT).show();
@@ -151,9 +158,10 @@ public class FragmentConvert extends Fragment {
         if(db.checkData(currentRate)>0){
             //rate available
             Rate rateOffline = db.getSingleRate(currentRate);
-            tvCRDate.setText(rateOffline.getDate());
+            tvCRDate.setText(compareDate.convertDate(rateOffline.getUpdatedOn()));
             tvCurrentRate.setText(String.valueOf(rateOffline.getAmount()));
             useOfflineRate = true;
+            isCurrentRateUpToDate();
         }else{
             //rate not available
             //Toast.makeText(getActivity(),"need connection to update rate data!",Toast.LENGTH_SHORT).show();
@@ -170,18 +178,20 @@ public class FragmentConvert extends Fragment {
     }
 
     private void isCurrentRateUpToDate(){
-        String lastUpdatedDateRate = db.getDataDate(currentRate);
-        StringToDate compareDate = new StringToDate(getActivity(),lastUpdatedDateRate,dateNow);
+        lastUpdatedDateRate = db.getDataDate(currentRate);
         String dateCompared = compareDate.difference(lastUpdatedDateRate, dateNow);
         if(dateCompared.equals("ok")){
             //data uptodate
             Rate ratedb = db.getSingleRate(currentRate);
             tvCurrentRate.setText(String.valueOf(ratedb.getAmount()));
-            tvCRDate.setText(ratedb.getDate());
+            tvCRDate.setText(compareDate.convertDate(ratedb.getUpdatedOn()));
         }else if(dateCompared.equals("outdated")){
             //try req new rate
-            //Toast.makeText(getActivity(),"rate outdated! need update rate",Toast.LENGTH_SHORT).show();
-            refreshCurrentRate(cFrom.getText().toString(),cTo.getText().toString());
+            if (connectionChecker.isOnline()){
+                refreshCurrentRate(cFrom.getText().toString(),cTo.getText().toString());
+            }else{
+                Toast.makeText(getActivity(),"rate outdated! need update rate",Toast.LENGTH_SHORT).show();
+            }
         }else{
             //something wrong
             Toast.makeText(getActivity(),"something wrong",Toast.LENGTH_SHORT).show();
@@ -198,23 +208,32 @@ public class FragmentConvert extends Fragment {
                 try {
                     String datestr = response.getString("date");
                     JSONObject rates = response.getJSONObject("rates");
-                    int cRate = rates.getInt(symbols);
+                    Double cRate = rates.getDouble(symbols);
+                    Rate newRate = new Rate(base,symbols,datestr,cRate,dateNow);
 
-                    if(datestr!=null && cRate!=0){
-                        //insert data to db
-                        Rate newRate = new Rate(base,symbols,datestr,cRate,dateNow);
+                    if(db.checkData(currentRate)>0){
+                        //update data
+                        int statusUpdateData = db.updateData(newRate);
+                        if(statusUpdateData>0){
+                            //success update data
+                            tvCurrentRate.setText(String.valueOf(cRate));
+                            tvCRDate.setText(compareDate.convertDate(dateNow));
+                        }else{
+                            //something wrong
+                            Toast.makeText(getActivity(),"something wrong",Toast.LENGTH_SHORT).show();
+                        }
+                    }else{
+                        //insert new data to db
                         long statusSaveData = db.saveData(newRate);
                         if(statusSaveData>0){
-                            //succes save data
+                            //success save data
                             tvCurrentRate.setText(String.valueOf(cRate));
-                            tvCRDate.setText(datestr);
+                            tvCRDate.setText(compareDate.convertDate(dateNow));
                         }else{
                             //something wrong
                             Toast.makeText(getActivity(),"something wrong",Toast.LENGTH_SHORT).show();
                         }
                     }
-
-
                 } catch (JSONException e) {
                     e.printStackTrace();
                     Toast.makeText(getActivity(),"Error: " + e.getMessage(),Toast.LENGTH_LONG).show();
@@ -232,7 +251,7 @@ public class FragmentConvert extends Fragment {
         MySingleton.getInstance(getActivity()).addToRequestQueue(refreshReq);
     }
 
-    private void getSingleRate(String base, final String symbols, final long amountBase) {
+    private void getSingleRate(final String base, final String symbols, final Double amountBase) {
         String  URLsingleRate = "http://api.fixer.io/latest?base="+base+"&symbols="+symbols;
         JsonObjectRequest singleRateReq = new JsonObjectRequest(Request.Method.GET,
                 URLsingleRate, null, new Response.Listener<JSONObject>() {
@@ -240,11 +259,25 @@ public class FragmentConvert extends Fragment {
             @Override
             public void onResponse(JSONObject response) {
                 try {
+                    String datestr = response.getString("date");
                     JSONObject rates = response.getJSONObject("rates");
-                    //rate = Long.parseLong(rates.getString(symbols));
-                    rate = (long)Double.parseDouble(rates.getString(symbols));
-                    long result = amountBase * rate;
-                    tvResultConvert.setText(String.valueOf(result));
+                    Double cRate = rates.getDouble(symbols);
+                    rate = Double.parseDouble(rates.getString(symbols));
+
+                    Rate newRate = new Rate(base,symbols,datestr,cRate,dateNow);
+                    long statusSaveData = db.saveData(newRate);
+                    if(statusSaveData>0){
+                        //success save data
+                        tvCurrentRate.setText(String.valueOf(cRate));
+                        tvCRDate.setText(compareDate.convertDate(dateNow));
+                        useOfflineRate = true;
+                    }else{
+                        //something wrong
+                        Toast.makeText(getActivity(),"something wrong",Toast.LENGTH_SHORT).show();
+                    }
+
+                    Double result = amountBase * rate;
+                    tvResultConvert.setText(decimalFormat.format(result).toString());
 
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -255,7 +288,11 @@ public class FragmentConvert extends Fragment {
 
             @Override
             public void onErrorResponse(VolleyError error) {
-                Toast.makeText(getActivity(),"Request Time Out", Toast.LENGTH_SHORT).show();
+                if(!(db.checkData(currentRate)>0)){
+                    Toast.makeText(getActivity(),"Please Update Rates Using Internet First!", Toast.LENGTH_SHORT).show();
+                }else{
+                    Toast.makeText(getActivity(),"Request Time Out", Toast.LENGTH_SHORT).show();
+                }
             }
         });
 

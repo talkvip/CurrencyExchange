@@ -37,7 +37,7 @@ public class Database extends SQLiteOpenHelper {
                                     +FIELD_RATES_DATE+" TEXT,"
                                     +FIELD_RATES_BASE+" TEXT,"
                                     +FIELD_RATES_SYMBOL+" TEXT,"
-                                    +FIELD_RATES_AMOUNT+" INTEGER,"
+                                    +FIELD_RATES_AMOUNT+" REAL,"
                                     +FIELD_RATES_UPDATED_ON+" TEXT)";
         db.execSQL(CREATE_TABLE_RATES);
     }
@@ -123,7 +123,7 @@ public class Database extends SQLiteOpenHelper {
         Rate resultRate = new Rate(cursor.getString(0),
                                    cursor.getString(1),
                                    cursor.getString(2),
-                                   cursor.getInt(3),
+                                   cursor.getDouble(3),
                                    cursor.getString(4));
 
         return resultRate;

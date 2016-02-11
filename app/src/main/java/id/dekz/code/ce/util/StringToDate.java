@@ -14,7 +14,9 @@ import java.util.Locale;
 public class StringToDate {
 
     private String dbDate,nowDate;
-    private SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd", Locale.UK);
+    private SimpleDateFormat formatDate = new SimpleDateFormat("yyyy-MM-dd", Locale.UK);
+    private SimpleDateFormat sdfTime = new SimpleDateFormat("hh:mm a", Locale.UK);
+    private SimpleDateFormat sdfDate = new SimpleDateFormat("MMM, dd yyyy", Locale.UK);
     private Context context;
 
     public StringToDate(Context context, String dbDate, String nowDate) {
@@ -23,10 +25,21 @@ public class StringToDate {
         this.nowDate = nowDate;
     }
 
+    public String convertDate(String strDate){
+        try {
+            Date date = formatDate.parse(strDate);
+            String newDate = sdfDate.format(date);
+            return newDate;
+        } catch (ParseException e) {
+            e.printStackTrace();
+            return "null";
+        }
+    }
+
     public String difference(String dbDate,String nowDate){
         try {
-            Date datedb = format.parse(dbDate);
-            Date datenow = format.parse(nowDate);
+            Date datedb = formatDate.parse(dbDate);
+            Date datenow = formatDate.parse(nowDate);
             if(datedb.before(datenow)){
                 return "outdated";
             }else{

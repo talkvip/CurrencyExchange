@@ -5,9 +5,9 @@ package id.dekz.code.ce.pojo;
  */
 public class Rate {
     private String base,symbol,date,updatedOn;
-    private int amount;
+    private Double amount;
 
-    public Rate(String base, String symbol, String date, int amount, String updatedOn) {
+    public Rate(String base, String symbol, String date, Double amount, String updatedOn) {
         this.base = base;
         this.symbol = symbol;
         this.date = date;
@@ -52,11 +52,11 @@ public class Rate {
         this.date = date;
     }
 
-    public int getAmount() {
+    public Double getAmount() {
         return amount;
     }
 
-    public void setAmount(int amount) {
+    public void setAmount(Double amount) {
         this.amount = amount;
     }
 }

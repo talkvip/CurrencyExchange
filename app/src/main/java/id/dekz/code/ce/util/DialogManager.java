@@ -68,7 +68,7 @@ public class DialogManager {
             public void onClick(DialogInterface dialog, int which) {
                 dialog.cancel();
                 if(!preferencesManager.isUsingAppOffline() && preferencesManager.isOfflineDialogCanAppear()){
-                    dialogUseAppOffline();
+                    //dialogUseAppOffline();
                 }
             }
         });
