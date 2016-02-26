@@ -2,12 +2,15 @@ package id.dekz.code.ce.fragment;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -20,6 +23,7 @@ import com.txusballesteros.AutoscaleEditText;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
@@ -52,6 +56,8 @@ public class FragmentConvert extends Fragment {
     private SimpleDateFormat dateFormat,timeFormat;
     private String dateNow,timeNow,lastUpdatedDateRate;
     private Date currentDate;
+
+    private Button btnSwap;
 
     private Database db;
     private ConnectionChecker connectionChecker;
@@ -86,6 +92,21 @@ public class FragmentConvert extends Fragment {
 
         etAmount = (AutoscaleEditText) rootView.findViewById(R.id.etAmount);
 
+        btnSwap = (Button) rootView.findViewById(R.id.btnSwap);
+        btnSwap.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //Toast.makeText(getActivity(),"swap!",Toast.LENGTH_SHORT).show();
+                String from = cFrom.getText().toString();
+                String to = cTo.getText().toString();
+                cFrom.setText(to);
+                cTo.setText(from);
+                //currentRate = new Rate(cFrom.getText().toString(),cTo.getText().toString());
+                //useRateInDB();
+                onResume();
+            }
+        });
+
         //TODO how to show keyboard auto ?
 
         //getActivity().getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
@@ -99,8 +120,9 @@ public class FragmentConvert extends Fragment {
         etAmount.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                if ((event != null && (event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) || (actionId == EditorInfo.IME_ACTION_DONE)) {
-                    //Toast.makeText(getActivity(),""+useOfflineRate,Toast.LENGTH_SHORT).show();
+                if (etAmount.length()==0) {
+                    //do nothing
+                }else if((event != null && (event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) || (actionId == EditorInfo.IME_ACTION_DONE)){
                     if(useOfflineRate){
                         Double amountDB = Double.parseDouble(String.valueOf(db.getSingleRate(currentRate).getAmount()));
                         Double amountBase = Double.parseDouble(etAmount.getText().toString());
@@ -108,7 +130,7 @@ public class FragmentConvert extends Fragment {
                         tvResultConvert.setText(decimalFormat.format(result).toString());
 
                         SubStringCurrency tes = new SubStringCurrency(String.valueOf(result));
-                        Toast.makeText(getActivity(),""+tes.getFormattedAmount(tvResultConvert.getText().toString()),Toast.LENGTH_LONG).show();
+                        //Toast.makeText(getActivity(),""+tes.getFormattedAmount(tvResultConvert.getText().toString()),Toast.LENGTH_LONG).show();
                     }else{
                         String base = cFrom.getText().toString();
                         String symbol = cTo.getText().toString();
@@ -117,6 +139,38 @@ public class FragmentConvert extends Fragment {
                     }
                 }
                 return false;
+            }
+        });
+
+        etAmount.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if(!(etAmount.length()==0)){
+                    if(useOfflineRate){
+                        Double amountDB = Double.parseDouble(String.valueOf(db.getSingleRate(currentRate).getAmount()));
+                        Double amountBase = Double.parseDouble(etAmount.getText().toString());
+                        Double result = amountDB * amountBase;
+                        tvResultConvert.setText(decimalFormat.format(result).toString());
+
+                        SubStringCurrency tes = new SubStringCurrency(String.valueOf(result));
+                        //Toast.makeText(getActivity(),""+tes.getFormattedAmount(tvResultConvert.getText().toString()),Toast.LENGTH_LONG).show();
+                    }else{
+                        String base = cFrom.getText().toString();
+                        String symbol = cTo.getText().toString();
+                        Double amountBase = Double.parseDouble(etAmount.getText().toString());
+                        getSingleRate(base,symbol,amountBase);
+                    }
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+
             }
         });
 
@@ -159,7 +213,8 @@ public class FragmentConvert extends Fragment {
             //rate available
             Rate rateOffline = db.getSingleRate(currentRate);
             tvCRDate.setText(compareDate.convertDate(rateOffline.getUpdatedOn()));
-            tvCurrentRate.setText(String.valueOf(rateOffline.getAmount()));
+            String strRates = String.valueOf(new BigDecimal((rateOffline.getAmount()).toString()));
+            tvCurrentRate.setText(String.valueOf(strRates));
             useOfflineRate = true;
             isCurrentRateUpToDate();
         }else{
@@ -183,7 +238,8 @@ public class FragmentConvert extends Fragment {
         if(dateCompared.equals("ok")){
             //data uptodate
             Rate ratedb = db.getSingleRate(currentRate);
-            tvCurrentRate.setText(String.valueOf(ratedb.getAmount()));
+            String strRates = String.valueOf(new BigDecimal((ratedb.getAmount()).toString()));
+            tvCurrentRate.setText(String.valueOf(strRates));
             tvCRDate.setText(compareDate.convertDate(ratedb.getUpdatedOn()));
         }else if(dateCompared.equals("outdated")){
             //try req new rate
@@ -209,6 +265,7 @@ public class FragmentConvert extends Fragment {
                     String datestr = response.getString("date");
                     JSONObject rates = response.getJSONObject("rates");
                     Double cRate = rates.getDouble(symbols);
+                    String strRates = String.valueOf(new BigDecimal((cRate).toString()));
                     Rate newRate = new Rate(base,symbols,datestr,cRate,dateNow);
 
                     if(db.checkData(currentRate)>0){
@@ -216,7 +273,7 @@ public class FragmentConvert extends Fragment {
                         int statusUpdateData = db.updateData(newRate);
                         if(statusUpdateData>0){
                             //success update data
-                            tvCurrentRate.setText(String.valueOf(cRate));
+                            tvCurrentRate.setText(strRates);
                             tvCRDate.setText(compareDate.convertDate(dateNow));
                         }else{
                             //something wrong
@@ -227,7 +284,8 @@ public class FragmentConvert extends Fragment {
                         long statusSaveData = db.saveData(newRate);
                         if(statusSaveData>0){
                             //success save data
-                            tvCurrentRate.setText(String.valueOf(cRate));
+                            tvCurrentRate.setText(strRates);
+                            //Toast.makeText(getActivity(),"rates: "+new BigDecimal((cRate).toString()),Toast.LENGTH_SHORT).show();
                             tvCRDate.setText(compareDate.convertDate(dateNow));
                         }else{
                             //something wrong
@@ -262,13 +320,14 @@ public class FragmentConvert extends Fragment {
                     String datestr = response.getString("date");
                     JSONObject rates = response.getJSONObject("rates");
                     Double cRate = rates.getDouble(symbols);
+                    String strRates = String.valueOf(new BigDecimal((cRate).toString()));
                     rate = Double.parseDouble(rates.getString(symbols));
 
                     Rate newRate = new Rate(base,symbols,datestr,cRate,dateNow);
                     long statusSaveData = db.saveData(newRate);
                     if(statusSaveData>0){
                         //success save data
-                        tvCurrentRate.setText(String.valueOf(cRate));
+                        tvCurrentRate.setText(strRates);
                         tvCRDate.setText(compareDate.convertDate(dateNow));
                         useOfflineRate = true;
                     }else{
