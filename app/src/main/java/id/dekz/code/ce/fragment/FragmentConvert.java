@@ -1,5 +1,6 @@
 package id.dekz.code.ce.fragment;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.text.Editable;
@@ -10,7 +11,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
 import android.widget.Button;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -27,16 +30,22 @@ import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 import id.dekz.code.ce.R;
+import id.dekz.code.ce.adapter.CurrencyConvertListAdapter;
+import id.dekz.code.ce.pojo.Currency;
 import id.dekz.code.ce.pojo.MySingleton;
 import id.dekz.code.ce.pojo.Rate;
 import id.dekz.code.ce.util.ConnectionChecker;
 import id.dekz.code.ce.util.Database;
 import id.dekz.code.ce.util.DialogManager;
+import id.dekz.code.ce.util.ExponentHandler;
+import id.dekz.code.ce.util.GenerateCurrencyList;
 import id.dekz.code.ce.util.PreferencesManager;
 import id.dekz.code.ce.util.StringToDate;
 import id.dekz.code.ce.util.SubStringCurrency;
@@ -48,7 +57,7 @@ public class FragmentConvert extends Fragment {
     private View rootView;
     private AutoscaleEditText etAmount;
 
-    private TextView cFrom;
+    public TextView cFrom;
     private TextView cTo;
     private TextView tvResultConvert;
     private TextView tvCurrentRate;
@@ -70,6 +79,10 @@ public class FragmentConvert extends Fragment {
     private NumberFormat decimalFormat = new DecimalFormat("#0.00");
     StringToDate compareDate;
 
+    private ExponentHandler exponentHandler = new ExponentHandler();
+    private GenerateCurrencyList generateCurrencyList = new GenerateCurrencyList();
+    public AlertDialog listCurrencyDialog;
+
     public FragmentConvert() {
         // Required empty public constructor
     }
@@ -85,7 +98,20 @@ public class FragmentConvert extends Fragment {
         rootView = inflater.inflate(R.layout.fragment_convert, container, false);
 
         cFrom = (TextView) rootView.findViewById(R.id.tvCurrencyFrom);
+        cFrom.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialogListCurrency("from");
+            }
+        });
+
         cTo = (TextView) rootView.findViewById(R.id.tvCurrencyTo);
+        cTo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialogListCurrency("to");
+            }
+        });
         tvResultConvert = (TextView) rootView.findViewById(R.id.tvResultConvert);
         tvCurrentRate = (TextView) rootView.findViewById(R.id.tvCurrentRate);
         tvCRDate = (TextView) rootView.findViewById(R.id.tvCRDate);
@@ -96,25 +122,28 @@ public class FragmentConvert extends Fragment {
         btnSwap.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //Toast.makeText(getActivity(),"swap!",Toast.LENGTH_SHORT).show();
                 String from = cFrom.getText().toString();
                 String to = cTo.getText().toString();
                 cFrom.setText(to);
+                preferencesManager.setKeyLastCurrencyFrom(to);
                 cTo.setText(from);
-                //currentRate = new Rate(cFrom.getText().toString(),cTo.getText().toString());
-                //useRateInDB();
+                preferencesManager.setKeyLastCurrencyTo(from);
                 onResume();
+                /*
+                if(etAmount.getText().length()!=0){
+                    Double amountDB = Double.parseDouble(String.valueOf(db.getSingleRate(currentRate).getAmount()));
+                    Double amountBase = Double.parseDouble(etAmount.getText().toString());
+                    Double result = amountDB * amountBase;
+                    tvResultConvert.setText(decimalFormat.format(result).toString());
+                }*/
             }
         });
 
         //TODO how to show keyboard auto ?
-
-        //getActivity().getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
-        //etAmount.setFocusable(true);
         etAmount.requestFocus();
-        InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(getActivity().INPUT_METHOD_SERVICE);
+        //InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(getActivity().INPUT_METHOD_SERVICE);
         //imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, InputMethodManager.HIDE_IMPLICIT_ONLY);
-        imm.showSoftInput(etAmount, InputMethodManager.SHOW_IMPLICIT);
+        //imm.showSoftInput(etAmount, InputMethodManager.SHOW_IMPLICIT);
         //imm.showSoftInput(getView(), InputMethodManager.SHOW_IMPLICIT);
 
         etAmount.setOnEditorActionListener(new TextView.OnEditorActionListener() {
@@ -128,9 +157,6 @@ public class FragmentConvert extends Fragment {
                         Double amountBase = Double.parseDouble(etAmount.getText().toString());
                         Double result = amountDB * amountBase;
                         tvResultConvert.setText(decimalFormat.format(result).toString());
-
-                        SubStringCurrency tes = new SubStringCurrency(String.valueOf(result));
-                        //Toast.makeText(getActivity(),""+tes.getFormattedAmount(tvResultConvert.getText().toString()),Toast.LENGTH_LONG).show();
                     }else{
                         String base = cFrom.getText().toString();
                         String symbol = cTo.getText().toString();
@@ -152,13 +178,14 @@ public class FragmentConvert extends Fragment {
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 if(!(etAmount.length()==0)){
                     if(useOfflineRate){
-                        Double amountDB = Double.parseDouble(String.valueOf(db.getSingleRate(currentRate).getAmount()));
-                        Double amountBase = Double.parseDouble(etAmount.getText().toString());
-                        Double result = amountDB * amountBase;
-                        tvResultConvert.setText(decimalFormat.format(result).toString());
-
-                        SubStringCurrency tes = new SubStringCurrency(String.valueOf(result));
-                        //Toast.makeText(getActivity(),""+tes.getFormattedAmount(tvResultConvert.getText().toString()),Toast.LENGTH_LONG).show();
+                        if(!(db.checkData(currentRate)>0)){
+                            onResume();
+                        }else{
+                            Double amountDB = Double.parseDouble(String.valueOf(db.getSingleRate(currentRate).getAmount()));
+                            Double amountBase = Double.parseDouble(etAmount.getText().toString());
+                            Double result = amountDB * amountBase;
+                            tvResultConvert.setText(decimalFormat.format(result).toString());
+                        }
                     }else{
                         String base = cFrom.getText().toString();
                         String symbol = cTo.getText().toString();
@@ -182,24 +209,76 @@ public class FragmentConvert extends Fragment {
         return rootView;
     }
 
+    public void dialogListCurrency(final String tag){
+        List<Currency> currencies = new ArrayList<Currency>();
+        GenerateCurrencyList generateCurrencyList = new GenerateCurrencyList();
+        currencies = generateCurrencyList.getListCurrency();
+
+        LayoutInflater li = LayoutInflater.from(getActivity());
+        View promptsView = li.inflate(R.layout.dialog_list_currency, null, false);
+        AlertDialog.Builder listCurrencyBuilder = new AlertDialog.Builder(getActivity());
+        listCurrencyBuilder.setView(promptsView);
+
+        ListView listConvertCurrency = (ListView) promptsView.findViewById(R.id.listConvertCurrency);
+        final List<Currency> finalCurrencies = currencies;
+        listConvertCurrency.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                //Toast.makeText(context, finalCurrencies.get(position).getCurrencyName()+" selected",Toast.LENGTH_SHORT).show();
+                if(tag.equals("from")){
+                    preferencesManager.setKeyLastCurrencyFrom(finalCurrencies.get(position).getCurrencyName());
+                }else{
+                    preferencesManager.setKeyLastCurrencyTo(finalCurrencies.get(position).getCurrencyName());
+                }
+                onResume();
+                listCurrencyDialog.dismiss();
+            }
+        });
+
+        CurrencyConvertListAdapter cAdapter = new CurrencyConvertListAdapter(getActivity(),currencies);
+        listConvertCurrency.setAdapter(cAdapter);
+
+        listCurrencyBuilder.setCancelable(true);
+        listCurrencyDialog = listCurrencyBuilder.show();
+    }
+
+    @Override
+    public void onActivityCreated(Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+        if (savedInstanceState != null) {
+            etAmount.setText(savedInstanceState.getString("etAmount"));
+        }else{
+            //Toast.makeText(getActivity(),"no state saved",Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString("etAmount", etAmount.getText().toString());
+    }
+
     @Override
     public void onResume(){
         super.onResume();
+        //Toast.makeText(getActivity(),"resumed",Toast.LENGTH_SHORT).show();
         db = new Database(getActivity());
         dialogManager = new DialogManager(getActivity());
         preferencesManager = new PreferencesManager(getActivity());
+        cFrom.setText(preferencesManager.getKeyLastCurrencyFrom());
+        cTo.setText(preferencesManager.getKeyLastCurrencyTo());
         currentRate = new Rate(cFrom.getText().toString(),cTo.getText().toString());
         connectionChecker = new ConnectionChecker(getActivity());
 
         compareDate = new StringToDate(getActivity(),lastUpdatedDateRate,dateNow);
 
         if(!connectionChecker.isOnline()){
-            //Toast.makeText(getActivity(),"not connected",Toast.LENGTH_SHORT).show();
+            //not connected
             useRateInDB();
         }else{
             if(!isCurrentRateAvailableInDB()){
                 //try req data to be inserted to db
-                refreshCurrentRate(cFrom.getText().toString(),cTo.getText().toString());
+                refreshCurrentRate(cFrom.getText().toString(), cTo.getText().toString());
             }else{
                 //check if data uptodate
                 isCurrentRateUpToDate();
@@ -213,13 +292,12 @@ public class FragmentConvert extends Fragment {
             //rate available
             Rate rateOffline = db.getSingleRate(currentRate);
             tvCRDate.setText(compareDate.convertDate(rateOffline.getUpdatedOn()));
-            String strRates = String.valueOf(new BigDecimal((rateOffline.getAmount()).toString()));
+            String strRates = exponentHandler.removeExponent(rateOffline.getAmount().toString());
             tvCurrentRate.setText(String.valueOf(strRates));
             useOfflineRate = true;
             isCurrentRateUpToDate();
         }else{
             //rate not available
-            //Toast.makeText(getActivity(),"need connection to update rate data!",Toast.LENGTH_SHORT).show();
             dialogManager.showSettingsInternet();
         }
     }
@@ -238,7 +316,7 @@ public class FragmentConvert extends Fragment {
         if(dateCompared.equals("ok")){
             //data uptodate
             Rate ratedb = db.getSingleRate(currentRate);
-            String strRates = String.valueOf(new BigDecimal((ratedb.getAmount()).toString()));
+            String strRates = exponentHandler.removeExponent(ratedb.getAmount().toString());
             tvCurrentRate.setText(String.valueOf(strRates));
             tvCRDate.setText(compareDate.convertDate(ratedb.getUpdatedOn()));
         }else if(dateCompared.equals("outdated")){
@@ -252,6 +330,11 @@ public class FragmentConvert extends Fragment {
             //something wrong
             Toast.makeText(getActivity(),"something wrong",Toast.LENGTH_SHORT).show();
         }
+
+        //String base = cFrom.getText().toString();
+        //String symbol = cTo.getText().toString();
+        //Double amountBase = Double.parseDouble(etAmount.getText().toString());
+        //getSingleRate(base,symbol,amountBase);
     }
 
     private void refreshCurrentRate(final String base, final String symbols){
@@ -265,7 +348,7 @@ public class FragmentConvert extends Fragment {
                     String datestr = response.getString("date");
                     JSONObject rates = response.getJSONObject("rates");
                     Double cRate = rates.getDouble(symbols);
-                    String strRates = String.valueOf(new BigDecimal((cRate).toString()));
+                    String strRates = exponentHandler.removeExponent(cRate.toString());
                     Rate newRate = new Rate(base,symbols,datestr,cRate,dateNow);
 
                     if(db.checkData(currentRate)>0){
@@ -285,7 +368,6 @@ public class FragmentConvert extends Fragment {
                         if(statusSaveData>0){
                             //success save data
                             tvCurrentRate.setText(strRates);
-                            //Toast.makeText(getActivity(),"rates: "+new BigDecimal((cRate).toString()),Toast.LENGTH_SHORT).show();
                             tvCRDate.setText(compareDate.convertDate(dateNow));
                         }else{
                             //something wrong
@@ -320,7 +402,7 @@ public class FragmentConvert extends Fragment {
                     String datestr = response.getString("date");
                     JSONObject rates = response.getJSONObject("rates");
                     Double cRate = rates.getDouble(symbols);
-                    String strRates = String.valueOf(new BigDecimal((cRate).toString()));
+                    String strRates = exponentHandler.removeExponent(cRate.toString());
                     rate = Double.parseDouble(rates.getString(symbols));
 
                     Rate newRate = new Rate(base,symbols,datestr,cRate,dateNow);

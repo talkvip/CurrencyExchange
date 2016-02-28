@@ -13,12 +13,32 @@ public class PreferencesManager {
 
     public static final String IS_OFFLINE = "IsOffline";
     public static final String KEY_ASK_TO_OFFLINE = "askToOffline";
+    public static final String KEY_LAST_CURRENCY_FROM = "lastCurrencyFrom";
+    public static final String KEY_LAST_CURRENCY_TO = "lastCurrencyTo";
 
     //constructor
     public PreferencesManager(Context context){
         this._context = context;
         pref = _context.getSharedPreferences("session",0);
         editor = pref.edit();
+    }
+
+    public String getKeyLastCurrencyFrom(){
+        return pref.getString(KEY_LAST_CURRENCY_FROM,"USD");
+    }
+
+    public String getKeyLastCurrencyTo(){
+        return pref.getString(KEY_LAST_CURRENCY_TO,"EUR");
+    }
+
+    public void setKeyLastCurrencyTo(String currencyTo){
+        editor.putString(KEY_LAST_CURRENCY_TO,currencyTo);
+        editor.commit();
+    }
+
+    public void setKeyLastCurrencyFrom(String currencyFrom){
+        editor.putString(KEY_LAST_CURRENCY_FROM, currencyFrom);
+        editor.commit();
     }
 
     public void dontShowOfflineDialog(){

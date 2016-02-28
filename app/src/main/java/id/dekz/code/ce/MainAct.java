@@ -36,6 +36,8 @@ public class MainAct extends AppCompatActivity{
     private TabLayout tabLayout;
     private ViewPager viewPager;
 
+    private FragmentConvert fragmentConvert = new FragmentConvert();
+
     private ConnectionChecker connectionChecker;
 
     @Override
@@ -78,7 +80,7 @@ public class MainAct extends AppCompatActivity{
 
     private void setupViewPager(ViewPager viewPager) {
         ViewPagerAdapter adapter = new ViewPagerAdapter(getSupportFragmentManager());
-        adapter.addFragment(new FragmentConvert(), "CONVERT");
+        adapter.addFragment(fragmentConvert, "CONVERT");
         adapter.addFragment(new FragmentList(), "LIST");
         viewPager.setAdapter(adapter);
     }
@@ -99,4 +101,21 @@ public class MainAct extends AppCompatActivity{
 
         return super.onOptionsItemSelected(item);
     }
+
+    /*
+    @Override
+    public void onBackPressed(){
+        super.onBackPressed();
+        Toast.makeText(this,"back",Toast.LENGTH_SHORT).show();
+        this.moveTaskToBack(true);
+    }
+    */
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        //Save the fragment's instance
+        getSupportFragmentManager().putFragment(outState,"convert",fragmentConvert);
+    }
+
 }
